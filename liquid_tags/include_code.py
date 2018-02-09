@@ -43,10 +43,12 @@ import sys
 from .mdx_liquid_tags import LiquidTags
 
 
-SYNTAX = "{% include_code /path/to/code.py [lang:python] [lines:X-Y] [:hidefilename:] [title] %}"
+SYNTAX = "{% include_code /path/to/code.py [basedir:base directory] [lang:python] [lines:X-Y] [:hidefilename:] [title] %}"
 FORMAT = re.compile(r"""
 ^(?:\s+)?                          # Allow whitespace at beginning
 (?P<src>\S+)                       # Find the path
+(?:\s+)?                           # Whitespace
+(?:(?:basedir:)(?P<basedir>\S+))?  # Optional base directory
 (?:\s+)?                           # Whitespace
 (?:(?:lang:)(?P<lang>\S+))?        # Optional language
 (?:\s+)?                           # Whitespace
@@ -63,14 +65,16 @@ FORMAT = re.compile(r"""
 @LiquidTags.register('include_code')
 def include_code(preprocessor, tag, markup):
 
-    title = None
+    title = ""
     lang = None
     src = None
+    basedir = None
 
     match = FORMAT.search(markup)
     if match:
         argdict = match.groupdict()
         title = argdict['title'] or ""
+        basedir = argdict['basedir'] or ""
         lang = argdict['lang']
         codec = argdict['codec'] or "utf8"
         lines = argdict['lines']
@@ -97,18 +101,16 @@ def include_code(preprocessor, tag, markup):
         else:
             code = fh.read()
 
-    if not title and hide_filename:
-        raise ValueError("Either title must be specified or filename must "
-                         "be available")
-
     if not hide_filename:
         title += " %s" % os.path.basename(src)
     if lines:
         title += " [Lines %s]" % lines
     title = title.strip()
 
-    url = '/{0}/{1}'.format(code_dir, src)
+    url = '/{0}/{1}/{2}'.format(basedir, code_dir, src)
     url = re.sub('/+', '/', url)
+
+    print(url)
 
     open_tag = ("<figure class='code'>\n<figcaption><span>{title}</span> "
                 "<a href='{url}'>download</a></figcaption>".format(title=title,
